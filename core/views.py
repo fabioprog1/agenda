@@ -40,8 +40,18 @@ def lista_eventos(request):
     data_atual = datetime.now() - timedelta(hours=1)
     evento = Evento.objects.filter(usuario=usuario,
                                    data_evento__gt=data_atual)
+#    evento = Evento.objects.filter(usuario=usuario)
     dados = {'eventos': evento}
     return render(request, 'agenda.html', dados)
+
+@login_required(login_url='/login/')
+def lista_historico(request):
+    usuario = request.user
+    evento = Evento.objects.filter(usuario=usuario,
+                                   data_evento__lt=datetime.now()
+                                   ).order_by('-data_evento')
+    dados = {'eventos': evento}
+    return render(request, 'historico.html', dados)
 
 @login_required(login_url='/login/')
 def evento(request):
@@ -50,6 +60,14 @@ def evento(request):
     if id_evento:
         dados['evento'] = Evento.objects.get(id=id_evento)
     return render(request, 'evento.html', dados)
+
+@login_required(login_url='/login/')
+def clone_evento(request):
+    id_evento = request.GET.get('id')
+    dados = {}
+    if id_evento:
+        dados['evento'] = Evento.objects.get(id=id_evento)
+    return render(request, 'clone_evento.html', dados)
 
 @login_required(login_url='/login/')
 def submit_evento(request):
@@ -68,26 +86,31 @@ def submit_evento(request):
                 evento.local = local
                 evento.descricao = descricao
                 evento.save()
+            else:
+                raise Http404()
                 
             #Evento.objects.filter(id=id_evento).update(titulo=titulo,
             #                                           data_evento=data_evento,
             #                                           local=local,
             #                                           descricao=descricao)
         else:
-            Evento.objects.create(titulo=titulo,
-                                  data_evento=data_evento,
-                                  local=local,
-                                  descricao=descricao,
-                                  usuario=usuario)
+            try:
+                Evento.objects.create(titulo=titulo,
+                                      data_evento=data_evento,
+                                      local=local,
+                                      descricao=descricao,
+                                      usuario=usuario)
+            except Exception:
+                raise Http404()
     return redirect('/')
 
-@login_required(login_url='/login/')
-def delete_evento(request, id_evento):
-    usuario = request.user
-    evento = Evento.objects.get(id=id_evento)
-    if usuario == evento.usuario:
-        evento.delete()
-    return redirect('/')
+#@login_required(login_url='/login/')
+#def delete_evento(request, id_evento):
+#    usuario = request.user
+#    evento = Evento.objects.get(id=id_evento)
+#    if usuario == evento.usuario:
+#        evento.delete()
+#    return redirect('/')
 
 @login_required(login_url='/login/')
 def delete_evento(request, id_evento):
